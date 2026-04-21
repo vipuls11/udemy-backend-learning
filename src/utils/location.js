@@ -30,4 +30,5 @@ async function getCoordsForAddress(address) {
   // return coordinates;
 }
 
-module.exports = getCoordsForAddress;
+//module.exports = getCoordsForAddress;
+export default getCoordsForAddress;
