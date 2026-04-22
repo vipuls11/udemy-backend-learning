@@ -1,10 +1,11 @@
+import mongoose from "mongoose";
 import { uploadOnCloudinary } from "../config/cloudinary.js";
 import  {Place}  from "../models/place.model.js";
 import { User } from "../models/user.model.js";
 import getCoordsForAddress from "../utils/location.js";
 
 // 1. Create a new place
-const createPlace = async (req, res) => {
+const createPlace = async (req, res, next) => {
     const { title, description, location, address } = req.body;
     
     try{
@@ -38,6 +39,7 @@ const createPlace = async (req, res) => {
         await newPlace.save();
         res.status(201).json({ message: "Place created", newPlace });
     }catch(err){
+      next(err);
         res.status(500).json({ message: 'Failed to create place', error: err.message });
     
     }
@@ -92,16 +94,43 @@ const updatePlaceById = async (req, res) => {
     }
 };
 // 5. Delete a place
+// const deletePlaceById = async (req, res) => {
+//         try{
+//               const deletedPlace = await Place.findByIdAndDelete(req.params.id);
+//     if (!deletedPlace) {
+//       return res.status(404).json({ message: 'Place not found' });
+//     }
+//     res.status(200).json({ message: 'Place deleted successfully' });
+//         }catch(err){
+//         res.status(500).json({ message: 'Failed to delete place', error: err.message });
+//     }
+// };
 const deletePlaceById = async (req, res) => {
-        try{
-              const deletedPlace = await Place.findByIdAndDelete(req.params.id);
-    if (!deletedPlace) {
-      return res.status(404).json({ message: 'Place not found' });
+  debugger;
+  try {
+    const placeId = new mongoose.Types.ObjectId(req.params.id);
+    //console.log(placeId)
+    // 1. Find place first
+    const place = await Place.findById(placeId);
+    if (!place) {
+      return res.status(404).json({ message: "Place not found" });
     }
-    res.status(200).json({ message: 'Place deleted successfully' });
-        }catch(err){
-        res.status(500).json({ message: 'Failed to delete place', error: err.message });
-    }
-};
 
+    // 2. Remove place from user's places array
+    await User.findByIdAndUpdate(place.creator, {
+      $pull: { places: placeId }
+    });
+
+    // 3. Delete place
+    await Place.findByIdAndDelete(placeId);
+
+    res.status(200).json({ message: "Place deleted successfully" });
+
+  } catch (err) {
+    res.status(500).json({
+      message: "Failed to delete place",
+      error: err.message
+    });
+  }
+};
 export { createPlace, getAllPlaces, getPlaceById, updatePlaceById, deletePlaceById };
