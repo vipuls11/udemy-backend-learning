@@ -91,3 +91,42 @@ export const login = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const userdetails = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    const userData = user.toObject();
+    delete userData.password;
+    delete userData.refreshToken;
+
+    return res.status(200).json({
+      message: `User logged in ${user.username}`,
+      accessToken,
+      user: userData,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: error.message,
+    });
+  }
+};
